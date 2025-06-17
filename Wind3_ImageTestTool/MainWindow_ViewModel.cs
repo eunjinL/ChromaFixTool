@@ -253,26 +253,42 @@ namespace Wind3_ImageTestTool
         public bool IsScaleUpEnabled
         {
             get => isScaleUpEnabled;
-            set => SetProperty(ref isScaleUpEnabled, value);
+            set
+            {
+                if (SetProperty(ref isScaleUpEnabled, value))
+                {
+                    optionParam.IsScaleUpEnabled = value;
+                    chromaticAberrationService.SetOptions(optionParam);
+                }
+            }
         }
 
         private bool isPreprocessingEnabled = false;
         public bool IsPreprocessingEnabled
         {
             get => isPreprocessingEnabled;
-            set => SetProperty(ref isPreprocessingEnabled, value);
+            set
+            {
+                if (SetProperty(ref isPreprocessingEnabled, value))
+                {
+                    optionParam.IsPreprocessingEnabled = value;
+                    chromaticAberrationService.SetOptions(optionParam);
+                }
+            }
         }
+
+        private ProcessingOptions optionParam;
         #endregion
 
         #region Constructor
 
         public MainWindow_ViewModel()
         {
-            // 서비스 초기화
             tiffService = new TiffService();
             imageProcessingService = new ImageProcessingService();
+            optionParam = new ProcessingOptions();
             chromaticAberrationService = new ChromaticAberrationService();
-
+            imageProcessingService = new ImageProcessingService();
             stopwatch = new Stopwatch();
 
             // Commands 초기화

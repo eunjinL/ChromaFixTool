@@ -24,6 +24,7 @@ namespace Wind3_ImageTestTool
     public class ChromaticAberrationService
     {
         private readonly ImageProcessingService imageProcessingService;
+        private ProcessingOptions optionParam;
         public string saveDir = @"D:\ImageLog";
         public string savePath_R = @"D:\ImageLog\RChannel";
         public string savePath_B = @"D:\ImageLog\BChannel";
@@ -31,6 +32,12 @@ namespace Wind3_ImageTestTool
         public ChromaticAberrationService()
         {
             imageProcessingService = new ImageProcessingService();
+            optionParam = new ProcessingOptions();
+        }
+
+        public void SetOptions(ProcessingOptions options)
+        {
+            optionParam = options;
         }
 
         private Bitmap ScaleUpImage(Bitmap original, int scale)
@@ -189,7 +196,7 @@ namespace Wind3_ImageTestTool
                 Bitmap workingTarget = targetChannel;
                 Rectangle workingRoiRect = roiRect;
                 int scaleFactor = 1;
-                if (needScaleUp)
+                if (needScaleUp && optionParam.IsScaleUpEnabled)
                 {
                     float scaleX = (float)MIN_ROI_SIZE / roiRect.Width;
                     float scaleY = (float)MIN_ROI_SIZE / roiRect.Height;
@@ -244,15 +251,15 @@ namespace Wind3_ImageTestTool
 
         #region [기타 함수]
         private double GetMedian(List<double> values)
-{
-    var sorted = values.OrderBy(x => x).ToList();
-    int count = sorted.Count;
+        {
+            var sorted = values.OrderBy(x => x).ToList();
+            int count = sorted.Count;
 
-    if (count % 2 == 1)
-        return sorted[count / 2];
-    else
-        return (sorted[(count / 2) - 1] + sorted[count / 2]) / 2.0;
-}
+            if (count % 2 == 1)
+                return sorted[count / 2];
+            else
+                return (sorted[(count / 2) - 1] + sorted[count / 2]) / 2.0;
+        }
         private void SaveImage(Bitmap saveImage, string savePath)
         {
             saveImage.Save(savePath, ImageFormat.Png);
@@ -955,9 +962,8 @@ namespace Wind3_ImageTestTool
                         tarMat.CopyTo(tarGray);
 
                     // 2. 이미지 전처리
-                    /*try
+                    /*if (optionParam.IsPreprocessingEnabled)
                     {
-                        // Python처럼 이미지 전처리 적용
                         using (var refEnhanced = new Mat())
                         using (var tarEnhanced = new Mat())
                         using (var refBlur = new Mat())
@@ -974,20 +980,43 @@ namespace Wind3_ImageTestTool
                             // 실제 ORB 사용
                             return ProcessORBDetector(imageIndex, refBlur, tarBlur, savePath);
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[ERROR] 이미지 전처리 과정에서 오류 발생: {ex}");
-                        return new PointF(0, 0);
                     }*/
-                    // 실제 ORB 사용
-                    return ProcessORBDetector(imageIndex, refGray, tarGray, savePath);
+                    if (optionParam.IsPreprocessingEnabled)
+                    {
+                        using (var refEq = new Mat())
+                        using (var tarEq = new Mat())
+                        using (var refSharp = new Mat())
+                        using (var tarSharp = new Mat())
+                        {
+                            // 1. 히스토그램 평활화
+                            CvInvoke.EqualizeHist(refGray, refEq);
+                            CvInvoke.EqualizeHist(tarGray, tarEq);
+
+                            // 2. Unsharp Masking
+                            using (var refBlur = new Mat())
+                            using (var tarBlur = new Mat())
+                            {
+                                CvInvoke.GaussianBlur(refEq, refBlur, new Size(0, 0), 3);
+                                CvInvoke.GaussianBlur(tarEq, tarBlur, new Size(0, 0), 3);
+
+                                CvInvoke.AddWeighted(refEq, 1.5, refBlur, -0.5, 0, refSharp);
+                                CvInvoke.AddWeighted(tarEq, 1.5, tarBlur, -0.5, 0, tarSharp);
+                            }
+
+                            return ProcessORBDetector(imageIndex, refSharp, tarSharp, savePath);
+                        }
+                    }
+                    else
+                    {
+                        // 전처리 없이 ORB 사용
+                        return ProcessORBDetector(imageIndex, refGray, tarGray, savePath);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ERROR] ORB 클래스 실패: {ex.Message}");
-                throw;
+                return new PointF(0, 0);
             }
         }
 
@@ -1045,7 +1074,7 @@ namespace Wind3_ImageTestTool
                         }
                         Debug.WriteLine($"[ORB] ORB Good 매칭: {goodMatches.Size}개");
 
-                        if (goodMatches.Size < 5)
+                        if (goodMatches.Size < 2)
                         {
                             Debug.WriteLine($"[ERROR] ORB 매칭 부족 - shift 0 적용: {goodMatches.Size}개");
                             return PointF.Empty;
@@ -1130,5 +1159,11 @@ namespace Wind3_ImageTestTool
             }
         }
         #endregion
+    }
+
+    public struct ProcessingOptions
+    {
+        public bool IsScaleUpEnabled;
+        public bool IsPreprocessingEnabled;
     }
 }
