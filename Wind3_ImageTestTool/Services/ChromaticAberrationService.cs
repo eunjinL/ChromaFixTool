@@ -243,6 +243,16 @@ namespace Wind3_ImageTestTool
         }
 
         #region [기타 함수]
+        private double GetMedian(List<double> values)
+{
+    var sorted = values.OrderBy(x => x).ToList();
+    int count = sorted.Count;
+
+    if (count % 2 == 1)
+        return sorted[count / 2];
+    else
+        return (sorted[(count / 2) - 1] + sorted[count / 2]) / 2.0;
+}
         private void SaveImage(Bitmap saveImage, string savePath)
         {
             saveImage.Save(savePath, ImageFormat.Png);
@@ -1027,7 +1037,7 @@ namespace Wind3_ImageTestTool
                             {
                                 var m1 = knnMatches[i][0];
                                 var m2 = knnMatches[i][1];
-                                if (m1.Distance < 0.75 * m2.Distance)
+                                if (m1.Distance < 0.8 * m2.Distance)
                                 {
                                     goodMatches.Push(new[] { m1 });
                                 }
@@ -1041,7 +1051,8 @@ namespace Wind3_ImageTestTool
                             return PointF.Empty;
                         }
 
-                        return CalculateOffsetFromORBMatches(refKeyPoints, tarKeyPoints, goodMatches);
+                        Size roiSize = refGray.Size;
+                        return CalculateOffsetFromORBMatches(refKeyPoints, tarKeyPoints, goodMatches, roiSize);
                     }
 
                 }
@@ -1056,7 +1067,7 @@ namespace Wind3_ImageTestTool
         /// <summary>
         /// ORB 매칭 결과에서 오프셋 계산
         /// </summary>
-        private PointF CalculateOffsetFromORBMatches(VectorOfKeyPoint refKeyPoints, VectorOfKeyPoint tarKeyPoints, VectorOfDMatch matches)
+        private PointF CalculateOffsetFromORBMatches(VectorOfKeyPoint refKeyPoints, VectorOfKeyPoint tarKeyPoints, VectorOfDMatch matches, Size roiRect)
         {
             var refPoints = refKeyPoints.ToArray();
             var tarPoints = tarKeyPoints.ToArray();
@@ -1074,8 +1085,11 @@ namespace Wind3_ImageTestTool
             var goodMatches = allMatches.Take(goodMatchCount).ToList();
 
             // 3. 오프셋 계산 (QueryIdx : G채널, TrainIdx : 비교채널)
-            double sumDx = 0, sumDy = 0;
-            int validCount = 0;
+            double offsetThreshold = Math.Max(roiRect.Width, roiRect.Height) * 0.7;
+            var dxList = new List<double>();
+            var dyList = new List<double>();
+            int filteredOutCount = 0;
+
             foreach (var match in goodMatches)
             {
                 if (match.QueryIdx >= 0 && match.QueryIdx < refPoints.Length &&
@@ -1087,23 +1101,27 @@ namespace Wind3_ImageTestTool
                     double dx = tarPt.X - refPt.X;
                     double dy = tarPt.Y - refPt.Y;
 
-                    // 극단적인 오프셋 제외
-                    if (Math.Abs(dx) < 50 && Math.Abs(dy) < 50)
+                    if (Math.Abs(dx) < offsetThreshold && Math.Abs(dy) < offsetThreshold)
                     {
-                        sumDx += dx;
-                        sumDy += dy;
-                        validCount++;
+                        dxList.Add(dx);
+                        dyList.Add(dy);
+                    }
+                    else
+                    {
+                        filteredOutCount++;
                     }
                 }
             }
 
             // 4. match 점이 여러개면 평균으로 offset 계산
-            if (validCount > 0)
+            if (dxList.Count > 0)
             {
-                double avgDx = sumDx / validCount;
-                double avgDy = sumDy / validCount;
-                
-                return new PointF((float)avgDx, (float)avgDy);
+                double medianDx = GetMedian(dxList);
+                double medianDy = GetMedian(dyList);
+
+                Debug.WriteLine($"[ORB] 유효 매칭: {dxList.Count}/{goodMatches.Count} (제외: {filteredOutCount}), Offset: ({medianDx:F2}, {medianDy:F2})");
+
+                return new PointF((float)medianDx, (float)medianDy);
             }
             else
             {

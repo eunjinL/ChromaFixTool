@@ -37,7 +37,7 @@
         </Grid>
 
         <!-- 옵션 패널 -->
-        <Grid Grid.Row="1" Margin="20,0,0,0">
+        <Grid Grid.Row="1" Margin="20,0,20,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -63,6 +63,14 @@
                             VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <RadioButton Content="ORB" IsChecked="{Binding IsOrbSelected}" 
                             VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <TextBlock Text="이미지 처리:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <CheckBox Content="이미지 스케일 업" IsChecked="{Binding IsScaleUpEnabled}" 
+                          VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <CheckBox Content="이미지 전처리" IsChecked="{Binding IsPreprocessingEnabled}" 
+                          VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
 

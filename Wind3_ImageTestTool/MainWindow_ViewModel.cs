@@ -248,6 +248,20 @@ namespace Wind3_ImageTestTool
             get => isExportButtonEnabled;
             set => SetProperty(ref isExportButtonEnabled, value);
         }
+
+        private bool isScaleUpEnabled = false;
+        public bool IsScaleUpEnabled
+        {
+            get => isScaleUpEnabled;
+            set => SetProperty(ref isScaleUpEnabled, value);
+        }
+
+        private bool isPreprocessingEnabled = false;
+        public bool IsPreprocessingEnabled
+        {
+            get => isPreprocessingEnabled;
+            set => SetProperty(ref isPreprocessingEnabled, value);
+        }
         #endregion
 
         #region Constructor
