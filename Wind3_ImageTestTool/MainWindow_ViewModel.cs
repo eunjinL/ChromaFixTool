@@ -177,6 +177,20 @@ namespace Wind3_ImageTestTool
             set => SetProperty(ref afterCorrectionImageSource, value);
         }
 
+        private BitmapSource beforeRoiCorrectionImageSource;
+        public BitmapSource BeforeRoiCorrectionImageSource
+        {
+            get => beforeRoiCorrectionImageSource;
+            set => SetProperty(ref beforeRoiCorrectionImageSource, value);
+        }
+
+        private BitmapSource afterRoiCorrectionImageSource;
+        public BitmapSource AfterRoiCorrectionImageSource
+        {
+            get => afterRoiCorrectionImageSource;
+            set => SetProperty(ref afterRoiCorrectionImageSource, value);
+        }
+
         private BitmapSource rChannelImageSource;
         public BitmapSource RChannelImageSource
         {
@@ -596,6 +610,34 @@ namespace Wind3_ImageTestTool
         {
             BeforeCorrectionImageSource = imageProcessingService.MatToImageSource(originalImage);
             AfterCorrectionImageSource = imageProcessingService.MatToImageSource(correctedImage);
+
+            // ROI 보정결과 이미지 표시
+            if (!singleROI.IsEmpty && originalImage != null && correctedImage != null)
+            {
+                try
+                {
+                    // ROI 영역 추출
+                    Bitmap beforeRoi = imageProcessingService.ExtractROI(originalImage, singleROI);
+                    Bitmap afterRoi = imageProcessingService.ExtractROI(correctedImage, singleROI);
+
+                    // ROI 보정결과 이미지 표시
+                    BeforeRoiCorrectionImageSource = imageProcessingService.MatToImageSource(beforeRoi);
+                    AfterRoiCorrectionImageSource = imageProcessingService.MatToImageSource(afterRoi);
+
+                    // 메모리 해제
+                    beforeRoi?.Dispose();
+                    afterRoi?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"ROI 보정결과 표시 중 오류: {ex.Message}");
+                }
+            }
+            else
+            {
+                BeforeRoiCorrectionImageSource = null;
+                AfterRoiCorrectionImageSource = null;
+            }
         }
 
         /// <summary>

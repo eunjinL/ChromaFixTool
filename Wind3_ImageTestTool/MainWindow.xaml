@@ -37,39 +37,41 @@
         </Grid>
 
         <!-- 옵션 패널 -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,5" HorizontalAlignment="Center">
-            <TextBlock Text="보정 방법:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="Bold"/>
-            <RadioButton Content="NCC" IsChecked="{Binding IsNccSelected}" Margin="0,0,20,0" VerticalAlignment="Center"/>
-            <RadioButton Content="ORB" IsChecked="{Binding IsOrbSelected}" Margin="0,0,20,0" VerticalAlignment="Center"/>
+        <Grid Grid.Row="1" Margin="20,0,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <Separator Width="1" Height="20" Margin="10,0" Background="Gray"/>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,20,0">
+                <TextBlock Text="B채널 생성:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <CheckBox Content="B채널 생성" IsChecked="{Binding GenerateBChannel}" 
+                          VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox Width="120" ItemsSource="{Binding BChannelMethods}" 
+                          SelectedIndex="{Binding BChannelMethodIndex}"
+                          IsEnabled="{Binding GenerateBChannel}">
+                    <ComboBoxItem Content="평균 (R+G)/2"/>
+                    <ComboBoxItem Content="가중치 (G 70%)"/>
+                    <ComboBoxItem Content="G채널만"/>
+                </ComboBox>
+            </StackPanel>
 
-            <Separator Width="1" Height="20" Margin="10,0" Background="Gray"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,20,0">
+                <TextBlock Text="보정 방법:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <RadioButton Content="NCC" IsChecked="{Binding IsNccSelected}" 
+                            VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <RadioButton Content="ORB" IsChecked="{Binding IsOrbSelected}" 
+                            VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
 
-            <CheckBox Content="B채널 생성" IsChecked="{Binding GenerateBChannel}" 
-                      VerticalAlignment="Center" Margin="10,0" FontWeight="Bold"/>
-
-            <ComboBox SelectedIndex="{Binding BChannelMethodIndex}" Margin="5,0" Width="120" VerticalAlignment="Center"
-                      IsEnabled="{Binding GenerateBChannel}">
-                <ComboBoxItem Content="평균 (R+G)/2"/>
-                <ComboBoxItem Content="가중치 (G 70%)"/>
-                <ComboBoxItem Content="G채널만"/>
-            </ComboBox>
-
-            <Separator Width="1" Height="20" Margin="10,0" Background="Gray"/>
-            <TextBlock Text="진행률:" VerticalAlignment="Center" Margin="20,0,5,0"/>
-            <ProgressBar Width="150" Height="20" Margin="5,0" Value="{Binding ProgressValue}"/>
-            <TextBlock Text="{Binding ProgressText}" VerticalAlignment="Center" Margin="10,0"/>
-        </StackPanel>
-
-        <!-- 메인 콘텐츠 영역 -->
+        <!-- 메인 컨텐츠 영역 -->
         <TabControl Grid.Row="2" Margin="10">
-
             <!-- 원본 이미지 탭 -->
             <TabItem Header="원본 이미지">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
@@ -77,34 +79,7 @@
                     <TextBlock Grid.Row="0" Text="{Binding OriginalImageInfo}" 
                                Margin="10" FontWeight="Bold" Padding="5"/>
 
-                    <!-- 프레임 네비게이션 컨트롤 -->
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,5">
-                        <Button Content="◀ 이전" Command="{Binding PreviousFrameCommand}" 
-                                IsEnabled="{Binding IsPreviousFrameEnabled}"
-                                Style="{StaticResource grayButton}"/>
-
-                        <TextBlock Text="{Binding CurrentFrameText}" 
-                                   VerticalAlignment="Center" Margin="15,0" 
-                                   FontWeight="Bold" FontSize="14"/>
-
-                        <Button Content="다음 ▶" Command="{Binding NextFrameCommand}" 
-                                IsEnabled="{Binding IsNextFrameEnabled}"
-                                Style="{StaticResource grayButton}"/>
-
-                        <Separator Width="1" Height="25" Margin="15,0" Background="Gray"/>
-
-                        <TextBlock Text="프레임 직접 이동:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                        <TextBox Text="{Binding FrameInputText, UpdateSourceTrigger=PropertyChanged}" 
-                                 Width="50" Height="25" VerticalContentAlignment="Center" Margin="0,0,5,0"/>
-                        <Button Content="이동" Command="{Binding GoToFrameCommand}" 
-                                Padding="8,3" Style="{StaticResource grayButton}"/>
-
-                        <TextBlock Text="{Binding FrameNavigationStatus}" 
-                                   VerticalAlignment="Center" Margin="15,0" 
-                                   Foreground="DarkBlue" FontStyle="Italic"/>
-                    </StackPanel>
-
-                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                         <Image Source="{Binding OriginalImageSource}" 
                                Stretch="Uniform" 
                                HorizontalAlignment="Center" 
@@ -126,13 +101,12 @@
                         <ColumnDefinition Width="1003*"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <!-- 전체 이미지 표시 -->
-                    <Grid Grid.Row="1" Margin="5" Grid.ColumnSpan="2">
+                    <Grid Grid.Row="0" Margin="5" Grid.ColumnSpan="2">
                         <StackPanel HorizontalAlignment="Center">
                             <TextBlock Text="전체 이미지 (ROI 영역 표시)" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
                             <Border>
@@ -151,7 +125,7 @@
                     </Grid>
 
                     <!-- ROI 설정 상태 표시 -->
-                    <Border Grid.Row="2" Margin="5" Padding="10" CornerRadius="5" Grid.ColumnSpan="2">
+                    <Border Grid.Row="1" Margin="5" Padding="10" CornerRadius="5" Grid.ColumnSpan="2">
                         <StackPanel>
                             <TextBlock Text="{Binding ROIStatus}" FontWeight="Bold" HorizontalAlignment="Center"/>
                         </StackPanel>
@@ -163,61 +137,88 @@
             <TabItem Header="보정 결과">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- 프레임 네비게이션 컨트롤 (보정 결과용) -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,5">
-                        <TextBlock Text="보정 결과 프레임 네비게이션:" VerticalAlignment="Center" Margin="0,0,15,0" FontWeight="Bold"/>
-
-                        <Button Content="◀ 이전" Command="{Binding PreviousFrameCommand}" 
-                                IsEnabled="{Binding IsPreviousFrameEnabled}"
-                                Style="{StaticResource grayButton}"/>
-
-                        <TextBlock Text="{Binding CurrentFrameText}" 
-                                   VerticalAlignment="Center" Margin="15,0" 
-                                   FontWeight="Bold" FontSize="14"/>
-
-                        <Button Content="다음 ▶" Command="{Binding NextFrameCommand}" 
-                                IsEnabled="{Binding IsNextFrameEnabled}"
-                                Style="{StaticResource grayButton}"/>
-
-                        <Separator Width="1" Height="25" Margin="15,0" Background="Gray"/>
-
-                        <TextBlock Text="프레임 이동:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                        <TextBox Text="{Binding FrameInputText, UpdateSourceTrigger=PropertyChanged}" 
-                                 Width="50" Height="25" VerticalContentAlignment="Center" Margin="0,0,5,0"/>
-                        <Button Content="이동" Command="{Binding GoToFrameCommand}" 
-                                Style="{StaticResource grayButton}"/>
-
-                        <TextBlock Text="{Binding FrameNavigationStatus}" 
-                                   VerticalAlignment="Center" Margin="15,0" 
-                                   Foreground="DarkBlue" FontStyle="Italic"/>
-                    </StackPanel>
-
                     <!-- 보정 전/후 비교 이미지 -->
-                    <Grid Grid.Row="1">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- 보정 전 -->
-                        <StackPanel Grid.Column="0" Margin="5">
-                            <TextBlock Text="보정 전" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                        <TextBlock Grid.Column="0" Text="보정 전" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                        <Border Grid.Column="0" Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
                             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                                <Image Source="{Binding BeforeCorrectionImageSource}" Stretch="Uniform"/>
+                                <Image Source="{Binding BeforeCorrectionImageSource}" 
+                                       Stretch="None"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
                             </ScrollViewer>
-                        </StackPanel>
+                        </Border>
 
                         <!-- 보정 후 -->
-                        <StackPanel Grid.Column="1" Margin="5">
-                            <TextBlock Text="보정 후" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                        <TextBlock Grid.Column="1" Text="보정 후" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                        <Border Grid.Column="1" Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
                             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                                <Image Source="{Binding AfterCorrectionImageSource}" Stretch="Uniform"/>
+                                <Image Source="{Binding AfterCorrectionImageSource}" 
+                                       Stretch="None"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
                             </ScrollViewer>
-                        </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ROI 보정결과 탭 -->
+            <TabItem Header="ROI 보정결과">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- ROI 보정 전/후 비교 이미지 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- ROI 보정 전 -->
+                        <Grid Grid.Column="0" Margin="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="ROI 보정 전" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+
+                            <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
+                                <Image Source="{Binding BeforeRoiCorrectionImageSource}" 
+                                       Stretch="Uniform" 
+                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                       HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Stretch"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- ROI 보정 후 -->
+                        <Grid Grid.Column="1" Margin="5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="ROI 보정 후" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+
+                            <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
+                                <Image Source="{Binding AfterRoiCorrectionImageSource}" 
+                                       Stretch="Uniform" 
+                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                       HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Stretch"/>
+                            </Border>
+                        </Grid>
                     </Grid>
                 </Grid>
             </TabItem>
@@ -226,41 +227,11 @@
             <TabItem Header="RGB 채널">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- 프레임 네비게이션 컨트롤 (RGB 채널용) -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10,5">
-                        <TextBlock Text="RGB 채널 프레임 네비게이션:" VerticalAlignment="Center" Margin="0,0,15,0" FontWeight="Bold"/>
-
-                        <Button Content="◀ 이전" Command="{Binding PreviousFrameCommand}" 
-                                IsEnabled="{Binding IsPreviousFrameEnabled}"
-                                Style="{StaticResource grayButton}"/>
-
-                        <TextBlock Text="{Binding CurrentFrameText}" 
-                                   VerticalAlignment="Center" Margin="15,0" 
-                                   FontWeight="Bold" FontSize="14"/>
-
-                        <Button Content="다음 ▶" Command="{Binding NextFrameCommand}" 
-                                IsEnabled="{Binding IsNextFrameEnabled}"
-                                Style="{StaticResource grayButton}"/>
-
-                        <Separator Width="1" Height="25" Margin="15,0" Background="Gray"/>
-
-                        <TextBlock Text="프레임 이동:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                        <TextBox Text="{Binding FrameInputText, UpdateSourceTrigger=PropertyChanged}" 
-                                 Width="50" Height="25" VerticalContentAlignment="Center" Margin="0,0,5,0"/>
-                        <Button Content="이동" Command="{Binding GoToFrameCommand}" 
-                                Style="{StaticResource grayButton}"/>
-
-                        <TextBlock Text="{Binding FrameNavigationStatus}" 
-                                   VerticalAlignment="Center" Margin="15,0" 
-                                   Foreground="DarkBlue" FontStyle="Italic"/>
-                    </StackPanel>
-
                     <!-- RGB 채널 이미지 -->
-                    <Grid Grid.Row="1">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
@@ -312,22 +283,59 @@
                     <!-- 로그 표시 영역 -->
                     <ScrollViewer Grid.Row="1">
                         <TextBox Text="{Binding LogText}" IsReadOnly="True" Background="Black" Foreground="White" 
-                             FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto" Margin="5"/>
+                                 FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" Margin="5"/>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
         </TabControl>
 
-        <!-- 하단 상태바 -->
-        <Grid Grid.Row="3" Background="LightGray" Height="30">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <!-- 통합된 프레임 네비게이션 컨트롤 -->
+        <Border Grid.Row="3" Background="#F5F5F5" BorderBrush="#DDDDDD" BorderThickness="0,1,0,0" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center" Margin="10,0"/>
-            <TextBlock Grid.Column="1" Text="{Binding ProcessingTimeText}" VerticalAlignment="Center" Margin="10,0"/>
-        </Grid>
+                <!-- 프레임 네비게이션 -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Content="◀ 이전" Command="{Binding PreviousFrameCommand}" 
+                            IsEnabled="{Binding IsPreviousFrameEnabled}"
+                            Style="{StaticResource grayButton}"/>
+
+                    <TextBlock Text="{Binding CurrentFrameText}" 
+                               VerticalAlignment="Center" Margin="15,0" 
+                               FontWeight="Bold" FontSize="14"/>
+
+                    <Button Content="다음 ▶" Command="{Binding NextFrameCommand}" 
+                            IsEnabled="{Binding IsNextFrameEnabled}"
+                            Style="{StaticResource grayButton}"/>
+
+                    <Separator Width="1" Height="25" Margin="15,0" Background="Gray"/>
+
+                    <TextBlock Text="프레임 직접 이동:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+                    <TextBox Text="{Binding FrameInputText, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="50" Height="25" VerticalContentAlignment="Center" Margin="0,0,5,0"/>
+                    <Button Content="이동" Command="{Binding GoToFrameCommand}" 
+                            Style="{StaticResource grayButton}"/>
+
+                    <TextBlock Text="{Binding FrameNavigationStatus}" 
+                               VerticalAlignment="Center" Margin="15,0" 
+                               Foreground="DarkBlue" FontStyle="Italic"/>
+                </StackPanel>
+
+                <!-- 하단 상태바 -->
+                <Grid Grid.Row="1" Background="LightGray" Height="30" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center" Margin="10,0"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ProcessingTimeText}" VerticalAlignment="Center" Margin="10,0"/>
+                </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

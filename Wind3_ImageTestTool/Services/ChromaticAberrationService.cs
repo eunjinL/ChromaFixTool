@@ -39,14 +39,10 @@ namespace Wind3_ImageTestTool
             Mat resized = new Mat();
             CvInvoke.Resize(src, resized, new Size(src.Width * scale, src.Height * scale), interpolation: Inter.Cubic);
 
-            // 그레이스케일 변환
-            Mat gray = new Mat();
-            CvInvoke.CvtColor(resized, gray, ColorConversion.Bgr2Gray);
-
             // 결과를 Bitmap으로 변환
             using (var buffer = new Emgu.CV.Util.VectorOfByte())
             {
-                CvInvoke.Imencode(".bmp", gray, buffer);
+                CvInvoke.Imencode(".bmp", resized, buffer);
                 using (var ms = new MemoryStream(buffer.ToArray()))
                 {
                     return new Bitmap(ms);

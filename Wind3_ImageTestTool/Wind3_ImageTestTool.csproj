@@ -205,22 +205,13 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /Y "C:\Users\ejlee\Documents\GitHub\PR_WIND3_EunJin\Lib\opencv_world347d.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\opencv_world347d.dll"
-
-copy /Y "C:\Users\ejlee\Documents\GitHub\PR_WIND3_EunJin\Lib\opencv_world347.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\opencv_world347.dll"
-
+    <PostBuildEvent>copy /Y "$(SolutionDir)Lib\opencv_world347d.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\opencv_world347d.dll"
+copy /Y "$(SolutionDir)Lib\opencv_world347.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\opencv_world347.dll"
 IF NOT EXIST "$(SolutionDir)$(ProjectName)\$(OutDir)\x64" (mkdir "$(SolutionDir)$(ProjectName)\$(OutDir)\x64")
-
-copy /Y "C:\Users\ejlee\Documents\GitHub\PR_WIND3_EunJin\Lib\EMGU.CV\x64\concrt140.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\concrt140.dll"
-
-copy /Y "C:\Users\ejlee\Documents\GitHub\PR_WIND3_EunJin\Lib\EMGU.CV\x64\cvextern.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\cvextern.dll"
-
-copy /Y "C:\Users\ejlee\Documents\GitHub\PR_WIND3_EunJin\Lib\EMGU.CV\x64\msvcp140.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\msvcp140.dll"
-
-copy /Y "C:\Users\ejlee\Documents\GitHub\PR_WIND3_EunJin\Lib\EMGU.CV\x64\opencv_videoio_ffmpeg411_64.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\opencv_videoio_ffmpeg411_64.dll"
-
-copy /Y "C:\Users\ejlee\Documents\GitHub\PR_WIND3_EunJin\Lib\EMGU.CV\x64\vcruntime140.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\vcruntime140.dll"
-
-</PostBuildEvent>
+copy /Y "$(SolutionDir)Lib\EMGU.CV\x64\concrt140.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\x64\concrt140.dll"
+copy /Y "$(SolutionDir)Lib\EMGU.CV\x64\cvextern.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\x64\cvextern.dll"
+copy /Y "$(SolutionDir)Lib\EMGU.CV\x64\msvcp140.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\x64\msvcp140.dll"
+copy /Y "$(SolutionDir)Lib\EMGU.CV\x64\opencv_videoio_ffmpeg411_64.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\x64\opencv_videoio_ffmpeg411_64.dll"
+copy /Y "$(SolutionDir)Lib\EMGU.CV\x64\vcruntime140.dll" "$(SolutionDir)$(ProjectName)\$(OutDir)\x64\vcruntime140.dll"</PostBuildEvent>
   </PropertyGroup>
 </Project>

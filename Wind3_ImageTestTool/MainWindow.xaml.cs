@@ -77,5 +77,10 @@ namespace Wind3_ImageTestTool
                 startPoint = null;
             }
         }
+
+        private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+        }
     }
 }
