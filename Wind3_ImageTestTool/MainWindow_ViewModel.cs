@@ -518,39 +518,34 @@ namespace Wind3_ImageTestTool
 
                 await Task.Run(() =>
                 {
-                    // 멀티 프레임 전체 처리
                     var correctedFrames = new Bitmap[allFrames.Length];
+                    var threadLogs = new string[allFrames.Length];
+                    var logLock = new object();
 
-                    for (int frameIndex = 0; frameIndex < allFrames.Length; frameIndex++)
+                    Parallel.For(0, allFrames.Length, frameIndex =>
                     {
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            int progressValue = 5 + (frameIndex * 70 / allFrames.Length);
-                            SetProgress(progressValue, $"프레임 {frameIndex + 1}/{allFrames.Length} 보정 중...");
-                            LogMessage($"프레임 {frameIndex + 1}/{allFrames.Length} 색수차 보정 처리 중...");
-                        });
-
-                        // ROI 기반 보정 (상세 정보 포함)
                         var roiResult = chromaticAberrationService.CorrectChromaticAberrationWithROIDetails(
                             allFrames[frameIndex], method, bChannelGenerationMethod, frameIndex + 1, new ROI[] { singleROI });
+
                         correctedFrames[frameIndex] = roiResult.CorrectedImage;
 
-                        // 로그
                         string offsetInfo = "";
-                        if (roiResult.RegionResults != null && roiResult.RegionResults.Length > 0)
+                        if (roiResult.RegionResults?.Length > 0)
                         {
                             var firstResult = roiResult.RegionResults[0];
                             offsetInfo = $" - R:({firstResult.RChannelOffset.X:F1},{firstResult.RChannelOffset.Y:F1})";
                         }
-                        Application.Current.Dispatcher.Invoke(() =>
-                            LogMessage($"프레임 {frameIndex + 1}: ROI 기반 색수차 보정 완료{offsetInfo}"));
 
-                        if (frameIndex % 10 == 0)
+                        lock (logLock)
                         {
-                            GC.Collect();
-                            GC.WaitForPendingFinalizers();
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                int progressValue = 5 + (frameIndex * 70 / allFrames.Length);
+                                SetProgress(progressValue, $"프레임 {frameIndex + 1}/{allFrames.Length} 보정 중...");
+                                LogMessage($"프레임 {frameIndex + 1}: ROI 기반 색수차 보정 완료{offsetInfo}");
+                            });
                         }
-                    }
+                    });
 
                     correctedImage?.Dispose();
                     correctedImage = new Bitmap(correctedFrames[currentFrameIndex]);
@@ -573,9 +568,9 @@ namespace Wind3_ImageTestTool
 
                 stopwatch.Stop();
                 ProcessingTimeText = $"처리 시간: {stopwatch.ElapsedMilliseconds}ms";
-                
+
                 string bChannelInfo = GenerateBChannel ? $"B채널 생성({BChannelMethod})" : "기존 B채널 사용";
-                StatusText = allFrames?.Length > 1 ? 
+                StatusText = allFrames?.Length > 1 ?
                     $"모든 프레임({allFrames.Length}개) 색수차 보정 완료 ({bChannelInfo}) - 이미지를 저장할 수 있습니다." :
                     $"색수차 보정 완료 ({bChannelInfo}) - 이미지를 저장할 수 있습니다.";
 
