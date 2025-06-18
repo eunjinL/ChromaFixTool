@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using static System.Windows.Clipboard;
 
 namespace Wind3_ImageTestTool
 {
@@ -88,6 +89,23 @@ namespace Wind3_ImageTestTool
             if (!int.TryParse(e.Text, out _))
             {
                 e.Handled = true;
+            }
+        }
+
+        private void CopyROICorrectedImage_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (ROICorrectedImage.Source is BitmapSource bitmapSource)
+                {
+                    // 클립보드에 직접 BitmapSource 복사
+                    Clipboard.SetImage(bitmapSource);
+                    MessageBox.Show("이미지가 클립보드에 복사되었습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"이미지 복사 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

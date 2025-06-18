@@ -222,11 +222,18 @@
                             <TextBlock Text="ROI 보정 후" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
 
                             <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
-                                <Image Source="{Binding AfterRoiCorrectionImageSource}" 
-                                       Stretch="Uniform" 
+                                <Image x:Name="ROICorrectedImage" 
+                                       Source="{Binding AfterRoiCorrectionImageSource}" 
+                                       Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="HighQuality"
                                        HorizontalAlignment="Stretch"
-                                       VerticalAlignment="Stretch"/>
+                                       VerticalAlignment="Stretch">
+                                    <Image.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="이미지 복사" Click="CopyROICorrectedImage_Click"/>
+                                        </ContextMenu>
+                                    </Image.ContextMenu>
+                                </Image>
                             </Border>
                         </Grid>
                     </Grid>
