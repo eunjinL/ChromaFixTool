@@ -263,6 +263,20 @@ namespace Wind3_ImageTestTool
             }
         }
 
+        private bool isScaleEstimationEnabled = false;
+        public bool IsScaleEstimationEnabled
+        {
+            get => isScaleEstimationEnabled;
+            set
+            {
+                if (SetProperty(ref isScaleEstimationEnabled, value))
+                {
+                    optionParam.IsScaleEstimationEnabled = value;
+                    chromaticAberrationService.SetOptions(optionParam);
+                }
+            }
+        }
+
         private bool isPreprocessingEnabled = false;
         public bool IsPreprocessingEnabled
         {
@@ -278,6 +292,72 @@ namespace Wind3_ImageTestTool
         }
 
         private ProcessingOptions optionParam;
+
+        private int startFrameIndex = 1;
+        public int StartFrameIndex
+        {
+            get => startFrameIndex;
+            set
+            {
+                // 빈 문자열이거나 숫자가 아닌 경우 현재 값 유지
+                if (value == 0 && string.IsNullOrEmpty(value.ToString()))
+                {
+                    return;
+                }
+
+                if (value < 1)
+                {
+                    value = 1;
+                    LogMessage("시작 프레임은 1보다 작을 수 없습니다.");
+                }
+                else if (value > endFrameIndex && endFrameIndex > 0)
+                {
+                    value = endFrameIndex;
+                    LogMessage("시작 프레임은 종료 프레임보다 클 수 없습니다.");
+                }
+
+                if (SetProperty(ref startFrameIndex, value))
+                {
+                    optionParam.StartFrameIndex = value;
+                    chromaticAberrationService.SetOptions(optionParam);
+                    UpdateFrameNavigation();
+                    LogMessage($"처리할 시작 프레임이 {value}로 설정되었습니다.");
+                }
+            }
+        }
+
+        private int endFrameIndex = 1;
+        public int EndFrameIndex
+        {
+            get => endFrameIndex;
+            set
+            {
+                // 빈 문자열이거나 숫자가 아닌 경우 현재 값 유지
+                if (value == 0 && string.IsNullOrEmpty(value.ToString()))
+                {
+                    return;
+                }
+
+                if (value < startFrameIndex)
+                {
+                    value = startFrameIndex;
+                    LogMessage("종료 프레임은 시작 프레임보다 작을 수 없습니다.");
+                }
+                else if (value > totalFrameCount)
+                {
+                    value = totalFrameCount;
+                    LogMessage($"종료 프레임은 총 프레임 수({totalFrameCount})보다 클 수 없습니다.");
+                }
+
+                if (SetProperty(ref endFrameIndex, value))
+                {
+                    optionParam.EndFrameIndex = value;
+                    chromaticAberrationService.SetOptions(optionParam);
+                    UpdateFrameNavigation();
+                    LogMessage($"처리할 종료 프레임이 {value}로 설정되었습니다.");
+                }
+            }
+        }
         #endregion
 
         #region Constructor
@@ -448,6 +528,8 @@ namespace Wind3_ImageTestTool
                 {
                     string fileInfo = tiffService.GetTiffInfo(filePath);
                     totalFrameCount = tiffService.GetFrameCount(filePath);
+                    StartFrameIndex = 1;
+                    EndFrameIndex = totalFrameCount;
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
@@ -518,11 +600,13 @@ namespace Wind3_ImageTestTool
 
                 await Task.Run(() =>
                 {
+                    // 모든 프레임에 대한 배열 생성 (처리하지 않는 프레임은 null로 유지)
                     var correctedFrames = new Bitmap[allFrames.Length];
                     var threadLogs = new string[allFrames.Length];
                     var logLock = new object();
 
-                    Parallel.For(0, allFrames.Length, frameIndex =>
+                    // 지정된 범위의 프레임만 처리
+                    Parallel.For(startFrameIndex - 1, endFrameIndex, frameIndex =>
                     {
                         var roiResult = chromaticAberrationService.CorrectChromaticAberrationWithROIDetails(
                             allFrames[frameIndex], method, bChannelGenerationMethod, frameIndex + 1, new ROI[] { singleROI });
@@ -540,12 +624,21 @@ namespace Wind3_ImageTestTool
                         {
                             Application.Current.Dispatcher.Invoke(() =>
                             {
-                                int progressValue = 5 + (frameIndex * 70 / allFrames.Length);
+                                int progressValue = 5 + ((frameIndex - (startFrameIndex - 1)) * 70 / (endFrameIndex - startFrameIndex + 1));
                                 SetProgress(progressValue, $"프레임 {frameIndex + 1}/{allFrames.Length} 보정 중...");
                                 LogMessage($"프레임 {frameIndex + 1}: ROI 기반 색수차 보정 완료{offsetInfo}");
                             });
                         }
                     });
+
+                    // 처리되지 않은 프레임은 원본 이미지 복사
+                    for (int i = 0; i < allFrames.Length; i++)
+                    {
+                        if (correctedFrames[i] == null)
+                        {
+                            correctedFrames[i] = new Bitmap(allFrames[i]);
+                        }
+                    }
 
                     correctedImage?.Dispose();
                     correctedImage = new Bitmap(correctedFrames[currentFrameIndex]);
@@ -559,8 +652,8 @@ namespace Wind3_ImageTestTool
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        SetProgress(75, "모든 프레임 보정 완료");
-                        LogMessage($"멀티프레임 색수차 보정 완료: 총 {allFrames.Length}개 프레임 처리됨");
+                        SetProgress(75, "프레임 보정 완료");
+                        LogMessage($"색수차 보정 완료: 프레임 {startFrameIndex}~{endFrameIndex} 처리됨 (총 {endFrameIndex - startFrameIndex + 1}개 프레임)");
                     });
                 });
 
@@ -570,14 +663,11 @@ namespace Wind3_ImageTestTool
                 ProcessingTimeText = $"처리 시간: {stopwatch.ElapsedMilliseconds}ms";
 
                 string bChannelInfo = GenerateBChannel ? $"B채널 생성({BChannelMethod})" : "기존 B채널 사용";
-                StatusText = allFrames?.Length > 1 ?
-                    $"모든 프레임({allFrames.Length}개) 색수차 보정 완료 ({bChannelInfo}) - 이미지를 저장할 수 있습니다." :
-                    $"색수차 보정 완료 ({bChannelInfo}) - 이미지를 저장할 수 있습니다.";
+                StatusText = $"프레임 {startFrameIndex}~{endFrameIndex} 색수차 보정 완료 ({bChannelInfo}) - 이미지를 저장할 수 있습니다.";
 
                 IsExportButtonEnabled = true;
 
-                LogMessage($"색수차 보정 완료 - {(allFrames?.Length > 1 ? $"총 {allFrames.Length}개 프레임" : "단일 프레임")} " +
-                          $"({bChannelInfo}) ({stopwatch.ElapsedMilliseconds}ms)");
+                LogMessage($"색수차 보정 완료 - 프레임 {startFrameIndex}~{endFrameIndex} ({bChannelInfo}) ({stopwatch.ElapsedMilliseconds}ms)");
             }
             finally
             {

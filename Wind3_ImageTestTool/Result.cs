@@ -14,12 +14,21 @@ namespace Wind3_ImageTestTool
         public PointF Offset { get; set; }
         public double NCC { get; set; }
         public string Method { get; set; }
+        public float? ScaleX { get; }
+        public float? ScaleY { get; }
 
-        public OffsetResult(PointF offset, double ncc, string method)
+        public OffsetResult(PointF offset, double ncc, string method, float? scaleX = null, float? scaleY = null)
         {
             Offset = offset;
             NCC = ncc;
             Method = method;
+            ScaleX = scaleX;
+            ScaleY = scaleY;
+        }
+
+        public OffsetResult WithScale((float scaleX, float scaleY) scale)
+        {
+            return new OffsetResult(Offset, NCC, Method, scale.scaleX, scale.scaleY);
         }
     }
 

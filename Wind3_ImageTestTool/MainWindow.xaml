@@ -41,7 +41,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="1.5*"/>
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,20,0">
@@ -70,6 +70,8 @@
                 <CheckBox Content="이미지 스케일 업" IsChecked="{Binding IsScaleUpEnabled}" 
                           VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <CheckBox Content="이미지 전처리" IsChecked="{Binding IsPreprocessingEnabled}" 
+                          VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <CheckBox Content="이미지 스케일링 추가" IsChecked="{Binding IsScaleEstimationEnabled}" 
                           VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
@@ -327,6 +329,17 @@
                              Width="50" Height="25" VerticalContentAlignment="Center" Margin="0,0,5,0"/>
                     <Button Content="이동" Command="{Binding GoToFrameCommand}" 
                             Style="{StaticResource grayButton}"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="10">
+                        <TextBlock Text="처리할 프레임 범위:" VerticalAlignment="Center" Margin="5"/>
+                        <TextBox Text="{Binding StartFrameIndex, UpdateSourceTrigger=PropertyChanged, TargetNullValue='1', StringFormat='{}{0}'}" 
+                             Width="30" Margin="3" VerticalAlignment="Center"
+                             PreviewTextInput="NumberValidationTextBox"/>
+                        <TextBlock Text="~" VerticalAlignment="Center" Margin="3"/>
+                        <TextBox Text="{Binding EndFrameIndex, UpdateSourceTrigger=PropertyChanged, TargetNullValue='1', StringFormat='{}{0}'}" 
+                             Width="30" Margin="3" VerticalAlignment="Center"
+                             PreviewTextInput="NumberValidationTextBox"/>
+                    </StackPanel>
 
                     <TextBlock Text="{Binding FrameNavigationStatus}" 
                                VerticalAlignment="Center" Margin="15,0" 

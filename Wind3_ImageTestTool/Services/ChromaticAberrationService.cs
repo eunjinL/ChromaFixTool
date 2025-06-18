@@ -86,7 +86,24 @@ namespace Wind3_ImageTestTool
             }
             Debug.WriteLine($"[ROI] 사용할 ROI: ({singleROI.X}, {singleROI.Y}, {singleROI.Width}, {singleROI.Height})");
 
-            // 2. ROI 기반 색수차 보정
+            // 2. 프레임 범위 체크
+            if (imageIndex < optionParam.StartFrameIndex || imageIndex > optionParam.EndFrameIndex)
+            {
+                Debug.WriteLine($"[Frame] {imageIndex}번 프레임은 처리 범위를 벗어나 원본 유지");
+                return (originalImage, new ChromaticAberrationResult[] 
+                { 
+                    new ChromaticAberrationResult 
+                    { 
+                        Method = method,
+                        BChannelMethod = bChannelMethod,
+                        IsROIBased = true,
+                        RegionInfo = $"처리 범위를 벗어난 프레임 (원본 유지)",
+                        ProcessingTime = TimeSpan.Zero
+                    } 
+                });
+            }
+
+            // 3. ROI 기반 색수차 보정
             var regionResults = new ChromaticAberrationResult[1]; // 단일 결과
             try
             {
@@ -146,12 +163,12 @@ namespace Wind3_ImageTestTool
                 if (bChannelMethod == BChanelGenerationMethod.None)
                 {
                     // (1) 기존 방식
-                    correctedImage = ApplyChannelOffsets(regionImage, rResult.Offset, bResult.Offset);
+                    correctedImage = ApplyChromaticAberrationCorrection(regionImage, rResult, bResult, roi);
                 }
                 else
                 {
                     // (2) B채널 생성 방식: R, B 먼저 보정 → 보정된 이미지에서 B채널 재생성
-                    var tempCorrectedImage = ApplyChannelOffsets(regionImage, rResult.Offset, bResult.Offset);
+                    var tempCorrectedImage = ApplyChromaticAberrationCorrection(regionImage, rResult, bResult, roi);
                     correctedImage = RegenerateBChannelFromCorrected(tempCorrectedImage, bChannelMethod);
                     tempCorrectedImage.Dispose();
                 }
@@ -224,7 +241,7 @@ namespace Wind3_ImageTestTool
                             result = new OffsetResult(new PointF(result.Offset.X / scaleFactor, result.Offset.Y / scaleFactor), result.NCC, result.Method);
                         }
                         Debug.WriteLine($"[NCC] NCC 결과: ({result.Offset.X:F3}, {result.Offset.Y:F3}), NCC: {result.NCC:F4}, 방법: {result.Method}");
-                        return result;
+                        break;
                     case CorrectionMethod.ORB:
                         var orbOffset = CalculateOffsetUsingORBWithROI(imageIndex, workingReference, workingTarget, workingRoiRect, saveDir);
                         if (needScaleUp)
@@ -233,13 +250,38 @@ namespace Wind3_ImageTestTool
                         }
                         result = new OffsetResult(orbOffset, 0.8, "ORB");
                         Debug.WriteLine($"[ORB] ORB 결과: ({result.Offset.X:F3}, {result.Offset.Y:F3})");
-                        return result;
+                        break;
                     default:
                         Debug.WriteLine($"[ERROR] 색수차 방법을 다시 선택하세요: {method}");
                         result = new OffsetResult(PointF.Empty, 0, "UNKNOWN_METHOD");
-                        return result;
+                        break;
                 }
                 Debug.WriteLine($"[이미지 저장 경로]: {saveDir}");
+
+                // 3. 스케일 보정
+                if (optionParam.IsScaleEstimationEnabled)
+                {
+                    Rectangle refAlignedROI = roiRect;
+                    Rectangle targetAlignedROI = new Rectangle(
+                        roiRect.X + (int)result.Offset.X,
+                        roiRect.Y + (int)result.Offset.Y,
+                        roiRect.Width,
+                        roiRect.Height
+                    );
+
+                    /*var patchRef = ExtractRegion(referenceChannel, refAlignedROI);
+                    var patchTgt = ExtractRegion(targetChannel, targetAlignedROI);
+                    string debugDir = Path.Combine(saveDir, "NCC_Debug");
+                    if (!Directory.Exists(debugDir))
+                        Directory.CreateDirectory(debugDir);
+                    SaveImage(patchRef, Path.Combine(debugDir, $"{imageIndex}_debug_ref_patch.png"));
+                    SaveImage(patchTgt, Path.Combine(debugDir, $"{imageIndex}_debug_tgt_patch.png"));*/
+
+                    var scaleResult = EstimateScaleBetweenROIs(imageIndex, referenceChannel, targetChannel, refAlignedROI, targetAlignedROI, saveDir);
+                    result = result.WithScale(scaleResult);
+                }
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -250,6 +292,101 @@ namespace Wind3_ImageTestTool
         }
 
         #region [기타 함수]
+        private (float scaleX, float scaleY) EstimateScaleBetweenROIs(int imageIndex, Bitmap refImg, Bitmap tgtImg, Rectangle roiRef, Rectangle roiTgt, string saveDir)
+        {
+            // 1. 스케일 범위 설정 (0.8 ~ 1.2)
+            var scaleRange = Enumerable.Range(80, 41).Select(x => x / 100.0f);
+            var bestScoreX = double.MinValue;
+            var bestScoreY = double.MinValue;
+            var bestScaleX = 1.0f;
+            var bestScaleY = 1.0f;
+
+            // 2. X 방향 스케일 계산
+            foreach (var scale in scaleRange)
+            {
+                // 2-1. 타겟 이미지 X 방향 리사이즈
+                var scaledTgt = ResizeImage(tgtImg, scale, 1.0f);
+                
+                // 2-2. ROI 영역 추출
+                var patchRef = ExtractRegion(refImg, roiRef);
+                var patchTgt = ExtractRegion(scaledTgt, roiTgt);
+
+                // 2-3. NCC 계산
+                var correlationMap = CalculateOpenCVStyleNCC(patchRef, patchTgt);
+                var (maxVal, maxLoc) = FindMaxLocation(correlationMap);
+
+                // 2-4. 최고 점수 업데이트
+                if (maxVal > bestScoreX)
+                {
+                    bestScoreX = maxVal;
+                    bestScaleX = scale;
+                }
+
+                // 2-5. 디버그 이미지 저장
+                /*string debugDir = Path.Combine(saveDir, "NCC_Scale_Debug");
+                if (!Directory.Exists(debugDir))
+                    Directory.CreateDirectory(debugDir);
+                SaveImage(patchRef, Path.Combine(debugDir, $"{imageIndex}_scaleX_{scale:F2}_ref.png"));
+                SaveImage(patchTgt, Path.Combine(debugDir, $"{imageIndex}_scaleX_{scale:F2}_tgt.png"));*/
+
+                // 2-6. 메모리 정리
+                scaledTgt.Dispose();
+                patchRef.Dispose();
+                patchTgt.Dispose();
+            }
+
+            // 3. Y 방향 스케일 계산
+            foreach (var scale in scaleRange)
+            {
+                // 3-1. 타겟 이미지 Y 방향 리사이즈
+                var scaledTgt = ResizeImage(tgtImg, 1.0f, scale);
+                
+                // 3-2. ROI 영역 추출
+                var patchRef = ExtractRegion(refImg, roiRef);
+                var patchTgt = ExtractRegion(scaledTgt, roiTgt);
+
+                // 3-3. NCC 계산
+                var correlationMap = CalculateOpenCVStyleNCC(patchRef, patchTgt);
+                var (maxVal, maxLoc) = FindMaxLocation(correlationMap);
+
+                // 3-4. 최고 점수 업데이트
+                if (maxVal > bestScoreY)
+                {
+                    bestScoreY = maxVal;
+                    bestScaleY = scale;
+                }
+
+                // 3-5. 디버그 이미지 저장
+                /*string debugDir = Path.Combine(saveDir, "NCC_Scale_Debug");
+                if (!Directory.Exists(debugDir))
+                    Directory.CreateDirectory(debugDir);
+                SaveImage(patchRef, Path.Combine(debugDir, $"{imageIndex}_scaleY_{scale:F2}_ref.png"));
+                SaveImage(patchTgt, Path.Combine(debugDir, $"{imageIndex}_scaleY_{scale:F2}_tgt.png"));*/
+
+                // 3-6. 메모리 정리
+                scaledTgt.Dispose();
+                patchRef.Dispose();
+                patchTgt.Dispose();
+            }
+
+            Debug.WriteLine($"[Scale][{imageIndex}] Best ScaleX: {bestScaleX:F3} (Score: {bestScoreX:F4}), Best ScaleY: {bestScaleY:F3} (Score: {bestScoreY:F4})");
+            return (bestScaleX, bestScaleY);
+        }
+
+        private Bitmap ResizeImage(Bitmap original, float scaleX, float scaleY)
+        {
+            using (Mat src = BitmapToMat(original))
+            using (Mat resized = new Mat())
+            {
+                CvInvoke.Resize(src, resized, new Size(
+                    (int)(src.Width * scaleX),
+                    (int)(src.Height * scaleY)
+                ), interpolation: Inter.Cubic);
+
+                return MatToBitmap(resized);
+            }
+        }
+
         private double GetMedian(List<double> values)
         {
             var sorted = values.OrderBy(x => x).ToList();
@@ -568,7 +705,7 @@ namespace Wind3_ImageTestTool
         /// <summary>
         /// 채널 오프셋을 적용하여 보정된 이미지 생성
         /// </summary>
-        private Bitmap ApplyChannelOffsets(Bitmap originalImage, PointF rOffset, PointF bOffset)
+        private Bitmap ApplyChromaticAberrationCorrection(Bitmap originalImage, OffsetResult rResult, OffsetResult bResult, ROI roi)
         {
             var result = new Bitmap(originalImage.Width, originalImage.Height, PixelFormat.Format24bppRgb);
 
@@ -584,30 +721,39 @@ namespace Wind3_ImageTestTool
                     byte* srcPtr = (byte*)srcData.Scan0;
                     byte* dstPtr = (byte*)dstData.Scan0;
 
+                    float scaleRx = rResult.ScaleX ?? 1.0f;
+                    float scaleRy = rResult.ScaleY ?? 1.0f;
+                    float scaleBx = bResult.ScaleX ?? 1.0f;
+                    float scaleBy = bResult.ScaleY ?? 1.0f;
+
+                    // ROI 중심점 계산
+                    float roiCenterX = roi.X + roi.Width / 2;
+                    float roiCenterY = roi.Y + roi.Height / 2;
+
                     for (int y = 0; y < originalImage.Height; y++)
                     {
                         for (int x = 0; x < originalImage.Width; x++)
                         {
                             int dstOffset = y * dstData.Stride + x * 3;
 
-                            // G 채널은 그대로
+                            // G 채널 그대로
                             dstPtr[dstOffset + 1] = srcPtr[y * srcData.Stride + x * 3 + 1];
 
-                            // R 채널에 오프셋 적용
-                            int rX = x + (int)Math.Round(rOffset.X);
-                            int rY = y + (int)Math.Round(rOffset.Y);
+                            // R 채널 - ROI 중심점 기준 스케일 보정
+                            float rXf = (x + rResult.Offset.X - roiCenterX) / scaleRx + roiCenterX;
+                            float rYf = (y + rResult.Offset.Y - roiCenterY) / scaleRy + roiCenterY;
+                            int rX = (int)Math.Round(rXf);
+                            int rY = (int)Math.Round(rYf);
                             if (rX >= 0 && rX < originalImage.Width && rY >= 0 && rY < originalImage.Height)
-                            {
                                 dstPtr[dstOffset + 2] = srcPtr[rY * srcData.Stride + rX * 3 + 2];
-                            }
 
-                            // B 채널에 오프셋 적용
-                            int bX = x + (int)Math.Round(bOffset.X);
-                            int bY = y + (int)Math.Round(bOffset.Y);
+                            // B 채널 - ROI 중심점 기준 스케일 보정
+                            float bXf = (x + bResult.Offset.X - roiCenterX) / scaleBx + roiCenterX;
+                            float bYf = (y + bResult.Offset.Y - roiCenterY) / scaleBy + roiCenterY;
+                            int bX = (int)Math.Round(bXf);
+                            int bY = (int)Math.Round(bYf);
                             if (bX >= 0 && bX < originalImage.Width && bY >= 0 && bY < originalImage.Height)
-                            {
                                 dstPtr[dstOffset] = srcPtr[bY * srcData.Stride + bX * 3];
-                            }
                         }
                     }
                 }
@@ -766,7 +912,6 @@ namespace Wind3_ImageTestTool
                         {
                             CvInvoke.MatchTemplate(searchGray, templateGray, result, TemplateMatchingType.CcoeffNormed);
                             var correlationArray = MatToDoubleArray(result);
-                            Debug.WriteLine($"[NCC] MatchTemplate 성공: 결과 크기 {result.Width}x{result.Height}");
 
                             // 상관관계 검증
                             double maxCorrelation = double.MinValue;
@@ -778,8 +923,6 @@ namespace Wind3_ImageTestTool
                                         maxCorrelation = correlationArray[y, x];
                                 }
                             }
-
-                            Debug.WriteLine($"OpenCV 최대 상관관계: {maxCorrelation:F4}");
                             return correlationArray;
                         }
                     }
@@ -1165,5 +1308,8 @@ namespace Wind3_ImageTestTool
     {
         public bool IsScaleUpEnabled;
         public bool IsPreprocessingEnabled;
+        public bool IsScaleEstimationEnabled;
+        public int StartFrameIndex;    // 처리 시작 프레임 인덱스
+        public int EndFrameIndex;      // 처리 종료 프레임 인덱스
     }
 }

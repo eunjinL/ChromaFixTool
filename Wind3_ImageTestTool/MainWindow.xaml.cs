@@ -80,7 +80,15 @@ namespace Wind3_ImageTestTool
 
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+        }
 
+        private void NumberValidationTextBox(object sender, TextCompositionEventArgs e)
+        {
+            // 숫자만 입력 가능하도록 검증
+            if (!int.TryParse(e.Text, out _))
+            {
+                e.Handled = true;
+            }
         }
     }
 }
