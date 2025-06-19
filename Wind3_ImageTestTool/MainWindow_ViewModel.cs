@@ -277,6 +277,20 @@ namespace Wind3_ImageTestTool
             }
         }
 
+        private bool isLog = false;
+        public bool IsLog
+        {
+            get => isLog;
+            set
+            {
+                if (SetProperty(ref isLog, value))
+                {
+                    /*optionParam.IsLog = value;
+                    chromaticAberrationService.SetOptions(optionParam);*/
+                }
+            }
+        }
+
         private bool isPreprocessingEnabled = false;
         public bool IsPreprocessingEnabled
         {
@@ -308,12 +322,10 @@ namespace Wind3_ImageTestTool
                 if (value < 1)
                 {
                     value = 1;
-                    LogMessage("시작 프레임은 1보다 작을 수 없습니다.");
                 }
                 else if (value > endFrameIndex && endFrameIndex > 0)
                 {
                     value = endFrameIndex;
-                    LogMessage("시작 프레임은 종료 프레임보다 클 수 없습니다.");
                 }
 
                 if (SetProperty(ref startFrameIndex, value))
@@ -341,12 +353,10 @@ namespace Wind3_ImageTestTool
                 if (value < startFrameIndex)
                 {
                     value = startFrameIndex;
-                    LogMessage("종료 프레임은 시작 프레임보다 작을 수 없습니다.");
                 }
                 else if (value > totalFrameCount)
                 {
                     value = totalFrameCount;
-                    LogMessage($"종료 프레임은 총 프레임 수({totalFrameCount})보다 클 수 없습니다.");
                 }
 
                 if (SetProperty(ref endFrameIndex, value))
@@ -605,6 +615,10 @@ namespace Wind3_ImageTestTool
                     var threadLogs = new string[allFrames.Length];
                     var logLock = new object();
 
+                    // 프로그래스 바용 변수 선언
+                    var totalFrames = endFrameIndex - (startFrameIndex - 1);
+                    var processedCount = 0;
+
                     // 지정된 범위의 프레임만 처리
                     Parallel.For(startFrameIndex - 1, endFrameIndex, frameIndex =>
                     {
@@ -614,20 +628,23 @@ namespace Wind3_ImageTestTool
                         correctedFrames[frameIndex] = roiResult.CorrectedImage;
 
                         string offsetInfo = "";
+                        string scaleInfo = "";
                         if (roiResult.RegionResults?.Length > 0)
                         {
                             var firstResult = roiResult.RegionResults[0];
-                            offsetInfo = $" - R:({firstResult.RChannelOffset.X:F1},{firstResult.RChannelOffset.Y:F1})";
-                        }
+                            offsetInfo = $"[Shift Offet] - R:({firstResult.RChannelOffset.X:F1},{firstResult.RChannelOffset.Y:F1}), B:({firstResult.BChannelOffset.X:F1},{firstResult.BChannelOffset.Y:F1})";
+                            scaleInfo = $"[Scale Offet] - R:({firstResult.RChannelScale.X:F1},{firstResult.RChannelScale.Y:F1}), B:({firstResult.BChannelScale.X:F1},{firstResult.BChannelScale.Y:F1})";
 
-                        lock (logLock)
-                        {
-                            Application.Current.Dispatcher.Invoke(() =>
+                            lock (logLock)
                             {
-                                int progressValue = 5 + ((frameIndex - (startFrameIndex - 1)) * 70 / (endFrameIndex - startFrameIndex + 1));
-                                SetProgress(progressValue, $"프레임 {frameIndex + 1}/{allFrames.Length} 보정 중...");
-                                LogMessage($"프레임 {frameIndex + 1}: ROI 기반 색수차 보정 완료{offsetInfo}");
-                            });
+                                Application.Current.Dispatcher.Invoke(() =>
+                                {
+                                    processedCount++;
+                                    int progressValue = (int)(processedCount * 100 / totalFrames);
+                                    SetProgress(progressValue, $"{processedCount}/{allFrames.Length} 보정 중...");
+                                    LogMessage($"[프레임 {frameIndex + 1}]\n{offsetInfo}\n{scaleInfo}\n");
+                                });
+                            }
                         }
                     });
 
@@ -713,7 +730,7 @@ namespace Wind3_ImageTestTool
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"채널 표시 중 오류: {ex.Message}");
+                    LogDetailMessage($"채널 표시 중 오류: {ex.Message}");
                 }
             }
         }
@@ -745,7 +762,7 @@ namespace Wind3_ImageTestTool
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"ROI 보정결과 표시 중 오류: {ex.Message}");
+                    LogDetailMessage($"ROI 보정결과 표시 중 오류: {ex.Message}");
                 }
             }
             else
@@ -823,6 +840,14 @@ namespace Wind3_ImageTestTool
             LogText += $"[{timestamp}] {message}\n";
         }
 
+        private void LogDetailMessage(string message)
+        {
+            if (IsLog)
+            {
+                Debug.WriteLine($"{message}\n");
+            }
+        }
+
         /// <summary>
         /// 로그 초기화
         /// </summary>
@@ -837,7 +862,7 @@ namespace Wind3_ImageTestTool
         /// </summary>
         private void ShowError(string message)
         {
-            LogMessage($"오류: {message}");
+            LogDetailMessage($"[ERROR]: {message}");
             MessageBox.Show(message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             StatusText = "오류 발생";
         }
@@ -851,7 +876,6 @@ namespace Wind3_ImageTestTool
             {
                 currentFrameIndex--;
                 LoadCurrentFrame();
-                LogMessage($"이전 프레임으로 이동: {currentFrameIndex + 1}/{totalFrameCount}");
             }
         }
 
@@ -864,7 +888,6 @@ namespace Wind3_ImageTestTool
             {
                 currentFrameIndex++;
                 LoadCurrentFrame();
-                LogMessage($"다음 프레임으로 이동: {currentFrameIndex + 1}/{totalFrameCount}");
             }
         }
 
@@ -881,12 +904,10 @@ namespace Wind3_ImageTestTool
                     currentFrameIndex = frameNumber;
                     LoadCurrentFrame();
                     FrameNavigationStatus = "프레임 이동 완료";
-                    LogMessage($"프레임으로 이동: {currentFrameIndex + 1}/{totalFrameCount}");
                 }
                 else
                 {
                     FrameNavigationStatus = "잘못된 프레임 번호";
-                    LogMessage($"잘못된 프레임 번호: {frameNumber + 1} (최대: {totalFrameCount})");
                 }
             }
             else
@@ -926,8 +947,6 @@ namespace Wind3_ImageTestTool
                         DisplayCorrectionResults();
                         
                         IsExportButtonEnabled = true;
-                        
-                        LogMessage($"프레임 {currentFrameIndex + 1}의 보정된 이미지 표시됨");
                     }
                     else
                     {
@@ -943,7 +962,7 @@ namespace Wind3_ImageTestTool
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"프레임 로드 오류: {ex.Message}");
+                    ShowError($"프레임 로드 오류: {ex.Message}");
                     FrameNavigationStatus = "프레임 로드 실패";
                 }
             }
@@ -975,13 +994,10 @@ namespace Wind3_ImageTestTool
         /// </summary>
         private void UpdateROIInfo()
         {
-            LogMessage("UpdateROIInfo 호출 - singleROI 상태:");
-            LogMessage($"singleROI: ({singleROI.X}, {singleROI.Y}, {singleROI.Width}, {singleROI.Height}) - IsEmpty: {singleROI.IsEmpty}");
+            LogMessage($"[ROI]: ({singleROI.X}, {singleROI.Y}, {singleROI.Width}, {singleROI.Height}) - IsEmpty: {singleROI.IsEmpty}");
             
             if (!singleROI.IsEmpty)
             {
-                LogMessage("ROI 상태: 사용자 정의 ROI 설정됨");
-                
                 // ROI 상태 업데이트
                 if (originalImage != null)
                 {
@@ -1014,7 +1030,7 @@ namespace Wind3_ImageTestTool
             }
             catch (Exception ex)
             {
-                LogMessage($"ROI 시각화 오류: {ex.Message}");
+                ShowError($"ROI 시각화 오류: {ex.Message}");
             }
         }
 
@@ -1070,101 +1086,6 @@ namespace Wind3_ImageTestTool
             }
             
             return rgbImage;
-        }
-
-        /// <summary>
-        /// 색수차 보정 상세 정보 로그 출력
-        /// </summary>
-        private void LogChromaticAberrationDetailsFiltered(ChromaticAberrationResult[] regionResults, string frameInfo)
-        {
-            if (regionResults == null || regionResults.Length == 0) return;
-
-            Application.Current.Dispatcher.Invoke(() => 
-            {
-                LogMessage($"========== {frameInfo} ==========");
-                LogMessage($"보정 방법: {regionResults[0].Method} | B채널: {GetBChannelMethodDescription(regionResults[0].BChannelMethod)}");
-                LogMessage("");
-
-                bool hasMovement = false;
-                
-                for (int i = 0; i < regionResults.Length; i++)
-                {
-                    var result = regionResults[i];
-                    
-                    // R채널 이동량 계산
-                    double rDistance = Math.Sqrt(result.RChannelOffset.X * result.RChannelOffset.X + result.RChannelOffset.Y * result.RChannelOffset.Y);
-                    
-                    // B채널 이동량 계산
-                    double bDistance = 0;
-                    if (result.BChannelMethod == BChanelGenerationMethod.None)
-                    {
-                        bDistance = Math.Sqrt(result.BChannelOffset.X * result.BChannelOffset.X + result.BChannelOffset.Y * result.BChannelOffset.Y);
-                    }
-                    
-                    if (rDistance > 0.05 || bDistance > 0.05)
-                    {
-                        hasMovement = true;
-                        LogMessage($"▶ {result.RegionInfo}");
-                        
-                        if (rDistance > 0.05)
-                        {
-                            LogMessage($"  R채널 이동: ({result.RChannelOffset.X:F3}, {result.RChannelOffset.Y:F3}) px (거리: {rDistance:F3} px)");
-                            if (result.RChannelNCC > 0)
-                                LogMessage($"           NCC: {result.RChannelNCC:F4}");
-                        }
-                        
-                        if (bDistance > 0.05 && result.BChannelMethod == BChanelGenerationMethod.None)
-                        {
-                            LogMessage($"  B채널 이동: ({result.BChannelOffset.X:F3}, {result.BChannelOffset.Y:F3}) px (거리: {bDistance:F3} px)");
-                            if (result.BChannelNCC > 0)
-                                LogMessage($"           NCC: {result.BChannelNCC:F4}");
-                        }
-                        else if (result.BChannelMethod != BChanelGenerationMethod.None)
-                        {
-                            LogMessage($"  B채널: {GetBChannelMethodDescription(result.BChannelMethod)}로 재생성됨");
-                        }
-                        
-                        LogMessage($"  처리 시간: {result.ProcessingTime.TotalMilliseconds:F1}ms");
-                        LogMessage("");
-                    }
-                }
-                
-                if (!hasMovement)
-                {
-                    LogMessage("[ERROR] 모든 영역에서 색수차 이동량이 미미함 (0.05px 미만)");
-                }
-                else
-                {
-                    double totalRDistance = regionResults.Sum(r => Math.Sqrt(r.RChannelOffset.X * r.RChannelOffset.X + r.RChannelOffset.Y * r.RChannelOffset.Y));
-                    double totalBDistance = regionResults.Where(r => r.BChannelMethod == BChanelGenerationMethod.None)
-                        .Sum(r => Math.Sqrt(r.BChannelOffset.X * r.BChannelOffset.X + r.BChannelOffset.Y * r.BChannelOffset.Y));
-                    
-                    LogMessage($"요약: R채널 총 이동 {totalRDistance:F3}px" + 
-                             (totalBDistance > 0 ? $", B채널 총 이동 {totalBDistance:F3}px" : ""));
-                }
-
-                LogMessage($"================================");
-            });
-        }
-
-        /// <summary>
-        /// B채널 생성 방법 설명 반환
-        /// </summary>
-        private string GetBChannelMethodDescription(BChanelGenerationMethod method)
-        {
-            switch (method)
-            {
-                case BChanelGenerationMethod.None:
-                    return "기존 B채널 사용";
-                case BChanelGenerationMethod.Average:
-                    return "(R+G)/2 평균";
-                case BChanelGenerationMethod.Weighted:
-                    return "G채널 70% 가중치";
-                case BChanelGenerationMethod.GreenOnly:
-                    return "G채널 복사";
-                default:
-                    return "알 수 없음";
-            }
         }
 
         /// <summary>

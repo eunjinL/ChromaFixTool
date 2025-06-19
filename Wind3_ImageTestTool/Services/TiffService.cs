@@ -171,15 +171,12 @@ namespace Wind3_ImageTestTool
                                 tiffImage.Save(filePath, encoder, encoderParams);
                                 
                                 firstPage = false;
-                                System.Diagnostics.Debug.WriteLine($"첫 번째 프레임 저장 완료: {filePath}");
                             }
                             else
                             {
                                 // 나머지 프레임: 추가
                                 encoderParams.Param[1] = new EncoderParameter(System.Drawing.Imaging.Encoder.SaveFlag, (long)EncoderValue.FrameDimensionPage);
                                 tiffImage.SaveAdd(bitmaps[i], encoderParams);
-                                
-                                System.Diagnostics.Debug.WriteLine($"프레임 {i + 1}/{bitmaps.Length} 추가 완료");
                             }
                             
                             // 주기적 메모리 정리 (가벼운 정리)
@@ -203,13 +200,11 @@ namespace Wind3_ImageTestTool
                     {
                         encoderParams.Param[1] = new EncoderParameter(System.Drawing.Imaging.Encoder.SaveFlag, (long)EncoderValue.Flush);
                         tiffImage.SaveAdd(encoderParams);
-                        System.Diagnostics.Debug.WriteLine($"멀티프레임 TIFF 저장 완료: {bitmaps.Length}개 프레임");
                     }
                     else
                     {
                         // 빈 파일 생성
                         File.Create(filePath).Close();
-                        System.Diagnostics.Debug.WriteLine("빈 TIFF 파일 생성");
                     }
                 }
                 catch (OutOfMemoryException ex)
@@ -246,7 +241,6 @@ namespace Wind3_ImageTestTool
             try
             {
                 Directory.CreateDirectory(tempDir);
-                System.Diagnostics.Debug.WriteLine($"배치 처리 임시 디렉토리: {tempDir}");
                 
                 // 배치 단위로 처리
                 for (int i = 0; i < bitmaps.Length; i += batchSize)
@@ -270,8 +264,6 @@ namespace Wind3_ImageTestTool
 
                 // 배치 파일들을 최종 파일로 병합
                 MergeBatchTiffFiles(batchFiles, filePath);
-                
-                System.Diagnostics.Debug.WriteLine($"배치 병합 완료: {filePath}");
             }
             finally
             {
@@ -281,7 +273,6 @@ namespace Wind3_ImageTestTool
                     if (Directory.Exists(tempDir))
                     {
                         Directory.Delete(tempDir, true);
-                        System.Diagnostics.Debug.WriteLine($"임시 디렉토리 정리: {tempDir}");
                     }
                 }
                 catch (Exception ex)

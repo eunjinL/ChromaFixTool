@@ -117,6 +117,8 @@ namespace Wind3_ImageTestTool
                 {
                     RChannelOffset = rResult.Offset,
                     BChannelOffset = bResult.Offset,
+                    RChannelScale = new PointF(rResult.ScaleX.GetValueOrDefault(0f), rResult.ScaleY.GetValueOrDefault(0f)),
+                    BChannelScale = new PointF(bResult.ScaleX.GetValueOrDefault(0f), bResult.ScaleY.GetValueOrDefault(0f)),
                     RChannelNCC = rResult.NCC,
                     BChannelNCC = bResult.NCC,
                     Method = method,
@@ -214,7 +216,7 @@ namespace Wind3_ImageTestTool
                 
                 if (roiRect.Width < 20 || roiRect.Height < 20)
                 {
-                    Debug.WriteLine("ROI가 너무 작음, 기본 방식 적용");
+                    Debug.WriteLine($"[{imageIndex}] ROI가 너무 작음, 기본 방식 적용");
                     var fallbackResult = new OffsetResult(new PointF(0, 0), 0.0, "ROI_TOO_SMALL");
                     return fallbackResult;
                 }
@@ -231,7 +233,7 @@ namespace Wind3_ImageTestTool
                     float scaleX = (float)MIN_ROI_SIZE / roiRect.Width;
                     float scaleY = (float)MIN_ROI_SIZE / roiRect.Height;
                     scaleFactor = (int)Math.Ceiling(Math.Max(scaleX, scaleY));
-                    Debug.WriteLine($"[ROI] ROI 크기가 작아 스케일 업 적용 (원본: {roiRect.Width}x{roiRect.Height})");
+                    Debug.WriteLine($"[ROI][{imageIndex}] ROI 크기가 작아 스케일 업 적용 (원본: {roiRect.Width}x{roiRect.Height})");
                     workingReference = ScaleUpImage(referenceChannel, scaleFactor);
                     workingTarget = ScaleUpImage(targetChannel, scaleFactor);
                     workingRoiRect = new Rectangle(
@@ -240,7 +242,7 @@ namespace Wind3_ImageTestTool
                         roiRect.Width * scaleFactor,
                         roiRect.Height * scaleFactor
                     );
-                    Debug.WriteLine($"[ROI] 스케일 업 후 ROI: {workingRoiRect.Width}x{workingRoiRect.Height}");
+                    Debug.WriteLine($"[ROI][{imageIndex}] 스케일 업 후 ROI: {workingRoiRect.Width}x{workingRoiRect.Height}");
                 }
 
                 // 2. NCC or ORB로 색수차 Offset 값 생성
@@ -253,7 +255,7 @@ namespace Wind3_ImageTestTool
                         {
                             result = new OffsetResult(new PointF(result.Offset.X / scaleFactor, result.Offset.Y / scaleFactor), result.NCC, result.Method);
                         }
-                        Debug.WriteLine($"[NCC] NCC 결과: ({result.Offset.X:F3}, {result.Offset.Y:F3}), NCC: {result.NCC:F4}, 방법: {result.Method}");
+                        Debug.WriteLine($"[NCC][{imageIndex}] NCC 결과: ({result.Offset.X:F3}, {result.Offset.Y:F3}), NCC: {result.NCC:F4}, 방법: {result.Method}");
                         break;
                     case CorrectionMethod.ORB:
                         var orbOffset = CalculateOffsetUsingORBWithROI(imageIndex, workingReference, workingTarget, workingRoiRect, saveDir);
@@ -262,10 +264,10 @@ namespace Wind3_ImageTestTool
                             orbOffset = new PointF(orbOffset.X / scaleFactor, orbOffset.Y / scaleFactor);
                         }
                         result = new OffsetResult(orbOffset, 0.8, "ORB");
-                        Debug.WriteLine($"[ORB] ORB 결과: ({result.Offset.X:F3}, {result.Offset.Y:F3})");
+                        Debug.WriteLine($"[ORB][{imageIndex}] ORB 결과: ({result.Offset.X:F3}, {result.Offset.Y:F3})");
                         break;
                     default:
-                        Debug.WriteLine($"[ERROR] 색수차 방법을 다시 선택하세요: {method}");
+                        Debug.WriteLine($"[ERROR][{imageIndex}] 색수차 방법을 다시 선택하세요: {method}");
                         result = new OffsetResult(PointF.Empty, 0, "UNKNOWN_METHOD");
                         break;
                 }
@@ -860,11 +862,11 @@ namespace Wind3_ImageTestTool
 
                 // (2) 최대 상관 위치 찾기
                 var (maxVal, maxLoc) = FindMaxLocation(correlationMap);
-                Debug.WriteLine($"[NCC] Result 상관관계: {maxVal:F4}, 위치: ({maxLoc.X}, {maxLoc.Y})");
+                Debug.WriteLine($"[NCC][{imageIndex}] Result 상관관계: {maxVal:F4}, 위치: ({maxLoc.X}, {maxLoc.Y})");
 
                 // (3) 서브픽셀 정밀도로 위치 보정
                 var subPixelLoc = CalculateSubPixelLocation(correlationMap, maxLoc);
-                Debug.WriteLine($"[NCC] 서브픽셀 조정 위치: ({subPixelLoc.X:F2}, {subPixelLoc.Y:F2})");
+                Debug.WriteLine($"[NCC][{imageIndex}] 서브픽셀 조정 위치: ({subPixelLoc.X:F2}, {subPixelLoc.Y:F2})");
 
                 // (4) 실제 오프셋 계산
                 float offsetX = 0;
@@ -874,21 +876,21 @@ namespace Wind3_ImageTestTool
                     offsetX = subPixelLoc.X + searchX1 - roiRect.X;
                     offsetY = subPixelLoc.Y + searchY1 - roiRect.Y;
                 }
-                Debug.WriteLine($"[NCC] Result 시프트: dx={offsetX:F2}, dy={offsetY:F2}");
+                Debug.WriteLine($"[NCC][{imageIndex}] Result 시프트: dx={offsetX:F2}, dy={offsetY:F2}");
 
                 // (5) 메모리 정리
                 template.Dispose();
                 searchArea.Dispose();
 
-                return new OffsetResult(new PointF(offsetX, offsetY), maxVal, $"ROI NCC (상관관계: {maxVal:F4})");
+                return new OffsetResult(new PointF(offsetX, offsetY), maxVal, $"[{imageIndex}]ROI NCC (상관관계: {maxVal:F4})");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ERROR] ROI 기반 NCC 계산 실패: {ex.Message}");
+                Debug.WriteLine($"[ERROR][{imageIndex}] ROI 기반 NCC 계산 실패: {ex.Message}");
                 template?.Dispose();
                 searchArea?.Dispose();
 
-                return new OffsetResult(new PointF(0, 0), 0, $"NCC fallback (오류: {ex.Message})");
+                return new OffsetResult(new PointF(0, 0), 0, $"[{imageIndex}]NCC fallback (오류: {ex.Message})");
             }
         }
 

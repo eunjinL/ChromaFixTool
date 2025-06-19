@@ -37,6 +37,8 @@ namespace Wind3_ImageTestTool
     {
         public PointF RChannelOffset { get; set; }
         public PointF BChannelOffset { get; set; }
+        public PointF RChannelScale { get; set; }
+        public PointF BChannelScale { get; set; }
         public double RChannelNCC { get; set; }
         public double BChannelNCC { get; set; }
         public CorrectionMethod Method { get; set; }
