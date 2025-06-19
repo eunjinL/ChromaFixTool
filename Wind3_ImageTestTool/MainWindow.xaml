@@ -204,11 +204,18 @@
                             <TextBlock Text="ROI 보정 전" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
 
                             <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
-                                <Image Source="{Binding BeforeRoiCorrectionImageSource}" 
+                                <Image x:Name="ROIBeforeImage" 
+                                       Source="{Binding BeforeRoiCorrectionImageSource}" 
                                        Stretch="Uniform" 
                                        RenderOptions.BitmapScalingMode="HighQuality"
                                        HorizontalAlignment="Stretch"
-                                       VerticalAlignment="Stretch"/>
+                                       VerticalAlignment="Stretch" Margin="-9,-1,9,1">
+                                    <Image.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="이미지 복사" Click="CopyROICorrectedImage2_Click"/>
+                                        </ContextMenu>
+                                    </Image.ContextMenu>
+                                </Image>
                             </Border>
                         </Grid>
 

@@ -126,6 +126,19 @@ namespace Wind3_ImageTestTool
                     ProcessingTime = DateTime.Now - regionStartTime
                 };
 
+                // (3) 원본 이미지 복사
+                try
+                {
+                    string debugDir = Path.Combine(saveDir, "Original_Debug");
+                    if (!Directory.Exists(debugDir))
+                        Directory.CreateDirectory(debugDir);
+                    SaveImage(originalImage, Path.Combine(debugDir, $"{imageIndex}_Original.png"));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[ERROR] 원본 이미지 저장 실패: {ex.Message}");
+                }
+
                 return (correctedImage, regionResults);
             }
             catch (Exception ex)
@@ -291,7 +304,7 @@ namespace Wind3_ImageTestTool
             }
         }
 
-        #region [기타 함수]
+        #region [Scale 계산]
         private (float scaleX, float scaleY) EstimateScaleBetweenROIs(int imageIndex, Bitmap refImg, Bitmap tgtImg, Rectangle roiRef, Rectangle roiTgt, string saveDir)
         {
             // 1. 스케일 범위 설정 (0.8 ~ 1.2)
@@ -306,7 +319,7 @@ namespace Wind3_ImageTestTool
             {
                 // 2-1. 타겟 이미지 X 방향 리사이즈
                 var scaledTgt = ResizeImage(tgtImg, scale, 1.0f);
-                
+
                 // 2-2. ROI 영역 추출
                 var patchRef = ExtractRegion(refImg, roiRef);
                 var patchTgt = ExtractRegion(scaledTgt, roiTgt);
@@ -340,7 +353,7 @@ namespace Wind3_ImageTestTool
             {
                 // 3-1. 타겟 이미지 Y 방향 리사이즈
                 var scaledTgt = ResizeImage(tgtImg, 1.0f, scale);
-                
+
                 // 3-2. ROI 영역 추출
                 var patchRef = ExtractRegion(refImg, roiRef);
                 var patchTgt = ExtractRegion(scaledTgt, roiTgt);
@@ -387,6 +400,9 @@ namespace Wind3_ImageTestTool
             }
         }
 
+        #endregion
+
+        #region [기타 함수]
         private double GetMedian(List<double> values)
         {
             var sorted = values.OrderBy(x => x).ToList();
@@ -740,16 +756,16 @@ namespace Wind3_ImageTestTool
                             dstPtr[dstOffset + 1] = srcPtr[y * srcData.Stride + x * 3 + 1];
 
                             // R 채널 - ROI 중심점 기준 스케일 보정
-                            float rXf = (x + rResult.Offset.X - roiCenterX) / scaleRx + roiCenterX;
-                            float rYf = (y + rResult.Offset.Y - roiCenterY) / scaleRy + roiCenterY;
+                            float rXf = (x + rResult.Offset.X - roiCenterX) * scaleRx + roiCenterX;
+                            float rYf = (y + rResult.Offset.Y - roiCenterY) * scaleRy + roiCenterY;
                             int rX = (int)Math.Round(rXf);
                             int rY = (int)Math.Round(rYf);
                             if (rX >= 0 && rX < originalImage.Width && rY >= 0 && rY < originalImage.Height)
                                 dstPtr[dstOffset + 2] = srcPtr[rY * srcData.Stride + rX * 3 + 2];
 
                             // B 채널 - ROI 중심점 기준 스케일 보정
-                            float bXf = (x + bResult.Offset.X - roiCenterX) / scaleBx + roiCenterX;
-                            float bYf = (y + bResult.Offset.Y - roiCenterY) / scaleBy + roiCenterY;
+                            float bXf = (x + bResult.Offset.X - roiCenterX) * scaleBx + roiCenterX;
+                            float bYf = (y + bResult.Offset.Y - roiCenterY) * scaleBy + roiCenterY;
                             int bX = (int)Math.Round(bXf);
                             int bY = (int)Math.Round(bYf);
                             if (bX >= 0 && bX < originalImage.Width && bY >= 0 && bY < originalImage.Height)
@@ -988,7 +1004,7 @@ namespace Wind3_ImageTestTool
                 {
                     double offset = 0.5 * (xNeighbors[0] - xNeighbors[2]) / denominator;
 
-                    if (Math.Abs(offset) <= 1.0) // 합리적인 범위 내에서만 적용
+                    if (Math.Abs(offset) <= 1.0) // 수정 가능
                     {
                         subX = maxLoc.X + (float)offset;
                     }
@@ -1010,7 +1026,7 @@ namespace Wind3_ImageTestTool
                 {
                     double offset = 0.5 * (yNeighbors[0] - yNeighbors[2]) / denominator;
 
-                    if (Math.Abs(offset) <= 1.0) // 합리적인 범위 내에서만 적용
+                    if (Math.Abs(offset) <= 1.0) // 수정 가능
                     {
                         subY = maxLoc.Y + (float)offset;
                     }
